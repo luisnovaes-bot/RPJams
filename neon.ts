@@ -4,7 +4,7 @@ export default defineConfig({
   // Declare your Neon services here
   auth: false,
   // Live updates of what each layer plays. Every address the app runs on must be listed.
-  preview: { realtime: { allowedOrigins: ["http://localhost:3005"] } },
+  preview: { realtime: { allowedOrigins: ["http://localhost:3005", "https://rpjams.vercel.app"] } },
   // Branch policy: per-branch tuning
   branch: (branch) => {
     if (branch.isDefault) {

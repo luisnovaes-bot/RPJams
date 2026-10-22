@@ -50,15 +50,18 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error)
+      }
       const data = (await res.json()) as { roomId: string; masterToken: string }
       const room = { ...data, name: name.trim() || "Mesa de RPG" }
       const rooms = [room, ...saved]
       save("rpjams:rooms", rooms)
       setSaved(rooms)
       setCreated(room)
-    } catch {
-      setError("Não consegui criar a sala. Tente de novo.")
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "Não consegui criar a sala. Tente de novo.")
     } finally {
       setBusy(false)
     }

@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { randomId } from "@/lib/ids"
+import { allow, clientKey } from "@/lib/rate-limit"
+
+const ROOMS_PER_HOUR = 5
 
 export async function POST(request: Request) {
+  if (!(await allow(clientKey(request, "create-room"), ROOMS_PER_HOUR, 60 * 60_000))) {
+    return NextResponse.json(
+      { error: `Você já criou ${ROOMS_PER_HOUR} salas na última hora. Aguarde um pouco para criar outra.` },
+      { status: 429 }
+    )
+  }
   const body = (await request.json().catch(() => ({}))) as { name?: unknown }
   const name = typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 80) : "Mesa de RPG"
   const id = randomId(10)

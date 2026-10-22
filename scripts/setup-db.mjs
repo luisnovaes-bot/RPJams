@@ -70,6 +70,12 @@ const statements = [
    WHERE t.id = x.id`,
   `DELETE FROM lists l USING (SELECT room_id, layer, min(id) AS keep_id FROM lists GROUP BY room_id, layer) k
    WHERE l.room_id = k.room_id AND l.layer = k.layer AND l.id <> k.keep_id`,
+  // Rate limiting: one row per counted action; the key holds a hash, never the raw IP.
+  `CREATE TABLE IF NOT EXISTS rate_events (
+    key text NOT NULL,
+    at_ms double precision NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS rate_events_key_idx ON rate_events(key, at_ms)`,
   `CREATE INDEX IF NOT EXISTS lists_room_idx ON lists(room_id)`,
   `CREATE INDEX IF NOT EXISTS tracks_list_idx ON tracks(list_id)`,
 ]

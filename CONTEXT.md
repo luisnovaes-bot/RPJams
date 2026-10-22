@@ -12,7 +12,7 @@ App web para o grupo de RPG ouvir música e ambientação juntos, em sincronia, 
 - **Camada**: um canal de áudio independente, de 1 a 4 por sala. A sala nasce com uma ("Música"); o mestre cria outras dando um nome, que vira o título do card. Cada camada toca no máximo uma faixa por vez e tem play/pause, **loop** e volume próprios.
 - **Faixas**: a fila de vídeos do YouTube de uma camada, com nome (título do YouTube, renomeável) e ponto de início opcional (`t=` do link). Colar uma playlist acrescenta todos os vídeos na ordem dela. Por dentro cada camada guarda as faixas numa única lista do banco.
 - **Play geral / Pause geral**: botões no cabeçalho do mestre. O Pause geral pausa com fade o que estiver tocando; o Play geral retoma só as camadas que o Pause geral pausou. Se nada foi pausado assim, põe para tocar as camadas paradas que têm faixas.
-- **Admin**: painel em /admin, protegido por ADMIN_PASSWORD, que lista as salas, links, quem está conectado e o que toca, e permite renomear, gerar novo link de mestre e apagar sala.
+- **Admin**: painel em /chefao, protegido por ADMIN_PASSWORD, que lista as salas, links, quem está conectado e o que toca, e permite renomear, gerar novo link de mestre e apagar sala.
 
 ## Comportamento
 
@@ -27,6 +27,7 @@ App web para o grupo de RPG ouvir música e ambientação juntos, em sincronia, 
 - O mestre vê quem está conectado e se o áudio já foi liberado.
 - Sincronia aceitável: até 1–2 s de diferença. Quem entra atrasado cai no ponto atual.
 - O som continua tocando com a aba em segundo plano.
+- Cada conexão (IP) pode criar no máximo 5 salas por hora (janela deslizante); a 6ª recebe um aviso para aguardar.
 - Logo depois de criar a sala, o botão "Abrir a sala como mestre" entra direto no painel (o clique já liberou o som).
 
 ## Restrições

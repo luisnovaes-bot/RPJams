@@ -307,7 +307,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
           const status = state?.youtube_id ? (state.paused ? "pausado" : engineStatus(layer)) : "silencio"
           const playing = isPlaying(layer)
           const layerLists = lists.filter((list) => list.layer === layer)
-          const empty = !state?.youtube_id && layerLists.every((list) => list.tracks.length === 0)
+          const empty = layerLists.every((list) => list.tracks.length === 0)
           return (
             <section key={layer} data-layer={layer} className={`card stack layer-card ${empty ? "empty-card" : ""}`}>
               <div className="layer-head">

@@ -7,6 +7,16 @@ import { VIDEO_ID, fetchYouTubeTitle, parseYouTubeUrl } from "@/lib/youtube"
 const START_LEAD_MS = 1500
 const RESUME_LEAD_MS = 400
 
+/** A layer left without tracks goes back to silence, so the master sees the "paste a link" view again. */
+async function resetEmptyLayers(roomId: string) {
+  await sql`
+    UPDATE layer_state s SET track_id = NULL, youtube_id = NULL, paused = false, resume_with_all = false
+    WHERE s.room_id = ${roomId} AND s.youtube_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM tracks t JOIN lists l ON l.id = t.list_id
+        WHERE l.room_id = s.room_id AND l.layer = s.layer)`
+}
+
 async function playTrack(roomId: string, trackId: string): Promise<boolean> {
   const rows = (await sql`
     SELECT t.id::text, t.youtube_id, t.start_seconds, l.layer
@@ -147,6 +157,7 @@ export async function POST(request: Request) {
       const layer = asLayer(body.layer)
       if (!layer) return fail("Pedido inválido")
       await sql`DELETE FROM tracks WHERE room_id = ${roomId} AND list_id IN (SELECT id FROM lists WHERE room_id = ${roomId} AND layer = ${layer})`
+      await resetEmptyLayers(roomId)
       break
     }
 
@@ -162,6 +173,7 @@ export async function POST(request: Request) {
       const trackId = asId(body.trackId)
       if (!trackId) return fail("Pedido inválido")
       await sql`DELETE FROM tracks WHERE id = ${trackId} AND room_id = ${roomId}`
+      await resetEmptyLayers(roomId)
       break
     }
 

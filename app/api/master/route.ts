@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { roomByMasterToken, sql } from "@/lib/db"
-import type { List, Track } from "@/lib/types"
-import { fetchYouTubeTitle, parseYouTubeUrl } from "@/lib/youtube"
+import { MAX_LAYERS, type List, type Track } from "@/lib/types"
+import { VIDEO_ID, fetchYouTubeTitle, parseYouTubeUrl } from "@/lib/youtube"
 
 // The old track fades out during this lead, then the new one starts from its beginning for everyone.
 const START_LEAD_MS = 1500
@@ -40,8 +40,8 @@ function asId(value: unknown): string | undefined {
   return undefined
 }
 
-function asLayer(value: unknown): 1 | 2 | undefined {
-  return value === 1 || value === 2 ? value : undefined
+function asLayer(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= MAX_LAYERS ? value : undefined
 }
 
 function asText(value: unknown, max: number): string | undefined {
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       if (!layer || !name) return fail("Dê um nome para a lista")
       await sql`
         INSERT INTO lists (room_id, layer, name, loop_default, position)
-        VALUES (${roomId}, ${layer}, ${name}, ${layer === 2},
+        VALUES (${roomId}, ${layer}, ${name}, ${layer !== 1},
           (SELECT coalesce(max(position) + 1, 0) FROM lists WHERE room_id = ${roomId} AND layer = ${layer}))`
       break
     }
@@ -117,6 +117,31 @@ export async function POST(request: Request) {
         VALUES (${listId}, ${roomId}, ${parsed.youtubeId}, ${parsed.startSeconds}, ${title.slice(0, 120)},
           (SELECT coalesce(max(position) + 1, 0) FROM tracks WHERE list_id = ${listId}))`
       break
+    }
+
+    case "addTracks": {
+      // A whole playlist, already in order. Videos that can't play outside YouTube are skipped.
+      const listId = asId(body.listId)
+      const ids = Array.isArray(body.videoIds) ? body.videoIds.filter((v): v is string => typeof v === "string" && VIDEO_ID.test(v)) : []
+      if (!listId || ids.length === 0) return fail("Playlist vazia")
+      if (ids.length > 200) return fail("A playlist tem mais de 200 vídeos; o limite é 200")
+      const owned = await sql`SELECT 1 FROM lists WHERE id = ${listId} AND room_id = ${roomId}`
+      if (!owned.length) return fail("Lista não encontrada", 404)
+      const titles: (string | undefined)[] = new Array(ids.length)
+      for (let i = 0; i < ids.length; i += 10) {
+        const batch = await Promise.all(ids.slice(i, i + 10).map((id) => fetchYouTubeTitle(id).catch(() => undefined)))
+        batch.forEach((title, j) => (titles[i + j] = title))
+      }
+      const rows = ids.map((id, i) => ({ id, title: titles[i] })).filter((r): r is { id: string; title: string } => !!r.title)
+      const base = (await sql`SELECT coalesce(max(position) + 1, 0)::int AS p FROM tracks WHERE list_id = ${listId}`) as { p: number }[]
+      if (rows.length) {
+        await sql.transaction(
+          rows.map((row, i) => sql`
+            INSERT INTO tracks (list_id, room_id, youtube_id, start_seconds, title, position)
+            VALUES (${listId}, ${roomId}, ${row.id}, 0, ${row.title.slice(0, 120)}, ${base[0].p + i})`)
+        )
+      }
+      return NextResponse.json({ lists: await library(roomId), added: rows.length, skipped: ids.length - rows.length })
     }
 
     case "renameTrack": {
@@ -222,6 +247,32 @@ export async function POST(request: Request) {
             ELSE ${Date.now() + RESUME_LEAD_MS}::double precision - (${position}::double precision - least(start_seconds, ${Math.floor(position)})) * 1000 END
         WHERE room_id = ${roomId} AND layer = ${layer} AND youtube_id IS NOT NULL`
       return NextResponse.json({ ok: true })
+    }
+
+    case "addLayer": {
+      // Takes the first free number. Layers after the first usually hold ambience, so loop starts on.
+      const used = (await sql`SELECT layer FROM layer_state WHERE room_id = ${roomId}`) as { layer: number }[]
+      const free = Array.from({ length: MAX_LAYERS }, (_, i) => i + 1).find((n) => !used.some((u) => u.layer === n))
+      if (!free) return fail(`O limite é de ${MAX_LAYERS} camadas por sala`)
+      const label = asText(body.label, 30) ?? (used.length === 1 ? "Ambiente" : "Nova camada")
+      const listName = label === "Ambiente" ? "Ambientes" : "Lista 1"
+      await sql.transaction([
+        sql`INSERT INTO layer_state (room_id, layer, label) VALUES (${roomId}, ${free}, ${label})`,
+        sql`INSERT INTO lists (room_id, layer, name, loop_default, position) VALUES (${roomId}, ${free}, ${listName}, true, 0)`,
+      ])
+      break
+    }
+
+    case "deleteLayer": {
+      const layer = asLayer(body.layer)
+      if (!layer) return fail("Pedido inválido")
+      const count = (await sql`SELECT count(*)::int AS n FROM layer_state WHERE room_id = ${roomId}`) as { n: number }[]
+      if (count[0].n <= 1) return fail("A sala precisa de pelo menos uma camada")
+      await sql.transaction([
+        sql`DELETE FROM layer_state WHERE room_id = ${roomId} AND layer = ${layer}`,
+        sql`DELETE FROM lists WHERE room_id = ${roomId} AND layer = ${layer}`,
+      ])
+      break
     }
 
     case "setLayerLabel": {

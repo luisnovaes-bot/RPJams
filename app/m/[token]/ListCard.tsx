@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import type { List } from "@/lib/types"
+import { parsePlaylistId } from "@/lib/youtube"
 
-type Call = (action: string, data?: object) => Promise<boolean>
+type Call = (action: string, data?: object) => Promise<unknown>
 
 type Props = {
   list: List
@@ -12,9 +13,10 @@ type Props = {
   playing: boolean
   seekBar: React.ReactNode
   call: Call
+  onImportPlaylist: (listId: string, playlistId: string) => Promise<boolean>
 }
 
-export function ListCard({ list, currentTrackId, playing, seekBar, call }: Props) {
+export function ListCard({ list, currentTrackId, playing, seekBar, call, onImportPlaylist }: Props) {
   const [url, setUrl] = useState("")
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
@@ -23,7 +25,10 @@ export function ListCard({ list, currentTrackId, playing, seekBar, call }: Props
   async function add() {
     if (!url.trim()) return
     setAdding(true)
-    if (await call("addTrack", { listId: list.id, url })) setUrl("")
+    // A playlist link brings every video of the playlist, in order.
+    const playlistId = parsePlaylistId(url)
+    const ok = playlistId ? await onImportPlaylist(list.id, playlistId) : await call("addTrack", { listId: list.id, url })
+    if (ok) setUrl("")
     setAdding(false)
   }
 

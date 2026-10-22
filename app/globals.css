@@ -110,3 +110,8 @@ button.round { width: 44px; height: 44px; border-radius: 50%; padding: 0; font-s
 .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
 input[type=password] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: 100%; }
 .player-layer { border-top: 1px solid var(--line); padding-top: 10px; }
+.add-layer { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; border-style: dashed; min-height: 260px; }
+.add-layer p { max-width: 260px; margin: 0; }
+button.add-layer-button { width: 120px; height: 120px; border-radius: 22px; font-size: 44px; line-height: 1; background: var(--panel-2); border: 2px solid var(--line); color: var(--text); }
+button.add-layer-button:hover { border-color: var(--accent); color: var(--accent); }
+.notice { color: var(--accent); font-size: 13px; }

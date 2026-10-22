@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react"
 import { clientId as getClientId } from "@/components/ids"
 import { ThemeToggle } from "@/components/ThemeToggle"
-import { LAYERS, PlayerDock, useLayers } from "@/components/useLayers"
+import { PlayerDock, useLayers } from "@/components/useLayers"
 import { usePresence } from "@/components/usePresence"
 import { startClockSync } from "@/lib/clock"
 import { useLiveRows } from "@/lib/live"
 import { load, save } from "@/lib/storage"
-import type { LayerState } from "@/lib/types"
+import { MAX_LAYERS, type LayerState } from "@/lib/types"
 
 const STATUS_TEXT: Record<string, string> = {
   silencio: "Em silêncio",
@@ -35,7 +35,7 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
   const request = useMemo(() => (joined ? { roomId } : null), [joined, roomId])
   const { rows, connected } = useLiveRows<LayerState>(request)
   // One volume for this person, applied to both layers on top of the master's mix.
-  const volumes = useMemo(() => ({ 1: volume, 2: volume }), [volume])
+  const volumes = useMemo(() => Object.fromEntries(Array.from({ length: MAX_LAYERS }, (_, i) => [i + 1, volume])), [volume])
   const { hostRef, statuses } = useLayers(joined, rows, volumes)
   usePresence(clientId ? { roomId } : null, clientId, nickname || "Sem nome", joined)
 
@@ -90,13 +90,13 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
           <span className="muted">Seu volume: {volume}%</span>
           <input type="range" min={0} max={100} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
         </label>
-        {LAYERS.map((layer) => {
-          const state = rows?.find((r) => r.layer === layer)
+        {[...(rows ?? [])].sort((a, b) => a.layer - b.layer).map((state, index) => {
+          const layer = state.layer
           const status = state?.youtube_id ? (state.paused ? "pausado" : statuses[layer]) : "silencio"
           return (
             <div key={layer} className="row player-layer">
               <span style={{ flex: 1 }}>
-                Camada {layer} {state?.label && <span className="tag">{state.label}</span>}
+                Camada {index + 1} {state?.label && <span className="tag">{state.label}</span>}
               </span>
               <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
             </div>

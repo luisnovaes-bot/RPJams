@@ -1,3 +1,6 @@
+/** A room has from 1 to this many layers (each one is a 200x200 player on players' screens). */
+export const MAX_LAYERS = 4
+
 export type LayerState = {
   layer: number
   track_id: string | null

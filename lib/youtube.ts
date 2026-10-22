@@ -10,6 +10,23 @@ function parseTime(value: string | null): number {
   return Number(h ?? 0) * 3600 + Number(m ?? 0) * 60 + Number(s ?? 0)
 }
 
+const LIST_ID = /^[A-Za-z0-9_-]{10,64}$/
+
+/** The playlist id in a YouTube link (watch?v=…&list=… or playlist?list=…), if there is one. */
+export function parsePlaylistId(input: string): string | undefined {
+  try {
+    const url = new URL(input.trim())
+    const host = url.hostname.replace(/^www\.|^m\.|^music\./, "")
+    if (host !== "youtube.com" && host !== "youtu.be") return undefined
+    const list = url.searchParams.get("list")
+    return list && LIST_ID.test(list) ? list : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export const VIDEO_ID = ID
+
 export function parseYouTubeUrl(input: string): { youtubeId: string; startSeconds: number } | undefined {
   let url: URL
   try {

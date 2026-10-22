@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { CopyLink } from "@/components/CopyLink"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { clientId as getClientId } from "@/components/ids"
-import { LAYERS, PlayerDock, useLayers } from "@/components/useLayers"
+import { PlayerDock, useLayers } from "@/components/useLayers"
 import { usePresence } from "@/components/usePresence"
 import { serverNow, startClockSync } from "@/lib/clock"
 import type { LayerPlayer } from "@/lib/layer-player"
 import { useLiveRows } from "@/lib/live"
+import { playlistVideoIds } from "@/lib/playlist"
 import { load, save } from "@/lib/storage"
-import type { LayerState, List, PresenceRow } from "@/lib/types"
+import { MAX_LAYERS, type LayerState, type List, type PresenceRow } from "@/lib/types"
 import { ListCard } from "./ListCard"
 import { SeekBar } from "./SeekBar"
 
@@ -28,9 +29,10 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
   const [joined, setJoined] = useState(false)
   const [lists, setLists] = useState<List[]>([])
   const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
   const [origin, setOrigin] = useState("")
   const [clientId, setClientId] = useState("")
-  const [myVolumes, setMyVolumes] = useState<Record<number, number>>({ 1: 100, 2: 100 })
+  const [myVolumes, setMyVolumes] = useState<Record<number, number>>({})
   const [now, setNow] = useState(0)
 
   const call = useCallback(
@@ -41,13 +43,13 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, action, ...data }),
       })
-      const body = (await res.json().catch(() => ({}))) as { error?: string; lists?: List[] }
+      const body = (await res.json().catch(() => ({}))) as { error?: string; lists?: List[]; added?: number; skipped?: number }
       if (!res.ok) {
         setError(body.error ?? "Algo deu errado")
         return false
       }
       if (body.lists) setLists(body.lists)
-      return true
+      return body
     },
     [token]
   )
@@ -55,7 +57,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
   useEffect(() => {
     setOrigin(window.location.origin)
     setClientId(getClientId())
-    setMyVolumes(load(`rpjams:volumes:${roomId}`, { 1: 100, 2: 100 }))
+    setMyVolumes(load<Record<number, number>>(`rpjams:volumes:${roomId}`, {}))
     call("library")
     const timer = setInterval(() => setNow(Date.now()), 5000)
     setNow(Date.now())
@@ -67,6 +69,8 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
   const { rows: layerRows, connected } = useLiveRows<LayerState>(layerRequest)
   const { rows: people } = useLiveRows<PresenceRow>(presenceRequest)
   const { hostRef, playersRef, statuses, statusKeys } = useLayers(joined, layerRows, myVolumes)
+  const layerKey = (layerRows ?? []).map((s) => s.layer).sort((a, b) => a - b).join(",")
+  const LAYERS = useMemo(() => (layerKey ? layerKey.split(",").map(Number) : []), [layerKey])
   usePresence(clientId ? { masterToken: token } : null, clientId, "Mestre", joined)
 
   const tracksById = useMemo(() => {
@@ -85,7 +89,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
       if (statusKeys[layer] !== `${state.track_id}:${state.youtube_id}`) continue
       call("next", { layer, fromTrackId: state.track_id, fromStartedAtMs: state.started_at_ms })
     }
-  }, [statuses, statusKeys, layerRows, call])
+  }, [LAYERS, statuses, statusKeys, layerRows, call])
 
   async function join() {
     await startClockSync()
@@ -100,8 +104,8 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
 
   // Stable getters so the seek bars don't restart their timers on every render.
   const getPlayers = useMemo<Record<number, () => LayerPlayer | undefined>>(
-    () => ({ 1: () => playersRef.current[1], 2: () => playersRef.current[2] }),
-    [playersRef]
+    () => Object.fromEntries(LAYERS.map((l) => [l, () => playersRef.current[l]])),
+    [LAYERS, playersRef]
   )
 
   function layerState(layer: number) {
@@ -145,7 +149,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
     if (state?.paused) return call("resume", { layers: [layer] })
     const list = activeList(layer)
     if (!list?.tracks.length) {
-      setError(`Adicione uma faixa na camada ${layer} primeiro`)
+      setError(`Adicione uma faixa na camada ${state?.label || ""} primeiro`)
       return
     }
     return call("startList", { listId: list.id })
@@ -159,12 +163,40 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
   function playAll() {
     const pausedByAll = LAYERS.filter((l) => layerState(l)?.paused && layerState(l)?.resume_with_all)
     if (pausedByAll.length) return call("resume", { layers: pausedByAll })
-    for (const layer of LAYERS) if (!isPlaying(layer)) startOrResume(layer)
+    // Layers with nothing to play are skipped quietly.
+    for (const layer of LAYERS) {
+      if (isPlaying(layer)) continue
+      if (layerState(layer)?.paused || activeList(layer)?.tracks.length) startOrResume(layer)
+    }
   }
 
   function pauseAll() {
     const playing = LAYERS.filter(isPlaying)
     if (playing.length) pause(playing, true)
+  }
+
+  /** Adds every video of a YouTube playlist to a list, in the playlist's order. */
+  async function importPlaylist(listId: string, playlistId: string) {
+    if (!hostRef.current) return false
+    setError("")
+    setNotice("Lendo a playlist do YouTube…")
+    try {
+      const videoIds = await playlistVideoIds(playlistId, hostRef.current)
+      setNotice(`Adicionando ${videoIds.length} vídeos…`)
+      const result = await call("addTracks", { listId, videoIds })
+      if (!result) {
+        setNotice("")
+        return false
+      }
+      const skipped = result.skipped ? ` (${result.skipped} não podem tocar fora do YouTube e ficaram de fora)` : ""
+      setNotice(`${result.added} faixas adicionadas${skipped}.`)
+      setTimeout(() => setNotice(""), 8000)
+      return true
+    } catch (e) {
+      setNotice("")
+      setError(e instanceof Error ? e.message : "Não consegui ler essa playlist")
+      return false
+    }
   }
 
   function toggleLoop(state: LayerState) {
@@ -237,9 +269,10 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
       </header>
 
       {error && <p className="error">{error}</p>}
+      {notice && <p className="notice">{notice}</p>}
 
       <div className="layers">
-        {LAYERS.map((layer) => {
+        {LAYERS.map((layer, index) => {
           const state = layerState(layer)
           const current = state?.track_id ? tracksById.get(state.track_id) : undefined
           const status = state?.youtube_id ? (state.paused ? "pausado" : engineStatus(layer)) : "silencio"
@@ -247,7 +280,18 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
           return (
             <section key={layer} className="card stack">
               <div className="layer-head">
-                <LayerTitle layer={layer} label={state?.label ?? ""} onRename={(label) => call("setLayerLabel", { layer, label })} />
+                <LayerTitle number={index + 1} label={state?.label ?? ""} onRename={(label) => call("setLayerLabel", { layer, label })} />
+                {LAYERS.length > 1 && (
+                  <button
+                    className="ghost"
+                    title="Apagar camada"
+                    onClick={() =>
+                      window.confirm(`Apagar a camada “${state?.label}” com todas as listas e faixas dela?`) && call("deleteLayer", { layer })
+                    }
+                  >
+                    🗑
+                  </button>
+                )}
                 <button className={`round ${playing ? "" : "primary"}`} title={playing ? "Pausar esta camada" : "Tocar esta camada"} onClick={() => toggleLayer(layer)}>
                   {playing ? "⏸" : "▶"}
                 </button>
@@ -274,8 +318,8 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                   />
                 </label>
                 <label className="stack small" style={{ gap: 2 }}>
-                  <span className="muted">Só no seu computador: {myVolumes[layer]}%</span>
-                  <input type="range" min={0} max={100} value={myVolumes[layer]} onChange={(e) => setMyVolume(layer, Number(e.target.value))} />
+                  <span className="muted">Só no seu computador: {myVolumes[layer] ?? 100}%</span>
+                  <input type="range" min={0} max={100} value={myVolumes[layer] ?? 100} onChange={(e) => setMyVolume(layer, Number(e.target.value))} />
                 </label>
               </div>
               {lists
@@ -288,19 +332,36 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                     playing={playing}
                     seekBar={<SeekBar getPlayer={getPlayers[layer]} onSeek={(position) => call("seek", { layer, position })} />}
                     call={call}
+                    onImportPlaylist={importPlaylist}
                   />
                 ))}
-              <NewList onCreate={(name) => call("createList", { layer, name })} />
+              <NewList onCreate={async (name) => !!(await call("createList", { layer, name }))} />
             </section>
           )
         })}
+        {layerRows && LAYERS.length < MAX_LAYERS && <AddLayerCard first={LAYERS.length === 1} onAdd={() => call("addLayer")} />}
       </div>
       <PlayerDock hostRef={hostRef} />
     </main>
   )
 }
 
-function LayerTitle({ layer, label, onRename }: { layer: number; label: string; onRename: (label: string) => void }) {
+function AddLayerCard({ first, onAdd }: { first: boolean; onAdd: () => void }) {
+  return (
+    <section className="card add-layer">
+      <h2>Nova camada</h2>
+      <button className="add-layer-button" onClick={onAdd} title="Criar nova camada">
+        +
+      </button>
+      <p className="small muted">
+        Uma camada toca ao mesmo tempo que as outras, com listas, volume e loop próprios.
+        {first ? " A segunda camada já vem pronta para ambientes: chuva, taverna, floresta, masmorra." : " Útil para separar ambientes, trilhas de personagens ou um segundo clima."}
+      </p>
+    </section>
+  )
+}
+
+function LayerTitle({ number, label, onRename }: { number: number; label: string; onRename: (label: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(label)
   const finish = () => {
@@ -309,7 +370,7 @@ function LayerTitle({ layer, label, onRename }: { layer: number; label: string; 
   }
   return (
     <div className="row layer-title">
-      <h2>Camada {layer}</h2>
+      <h2>Camada {number}</h2>
       {editing ? (
         <input
           type="text"

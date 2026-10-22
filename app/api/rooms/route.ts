@@ -9,9 +9,8 @@ export async function POST(request: Request) {
   const masterToken = randomId(28)
   await sql.transaction([
     sql`INSERT INTO rooms (id, master_token, name) VALUES (${id}, ${masterToken}, ${name})`,
-    sql`INSERT INTO layer_state (room_id, layer, label) VALUES (${id}, 1, 'Música'), (${id}, 2, 'Ambiente')`,
-    sql`INSERT INTO lists (room_id, layer, name, loop_default, position) VALUES
-        (${id}, 1, 'Músicas', false, 0), (${id}, 2, 'Ambientes', true, 0)`,
+    sql`INSERT INTO layer_state (room_id, layer, label) VALUES (${id}, 1, 'Música')`,
+    sql`INSERT INTO lists (room_id, layer, name, loop_default, position) VALUES (${id}, 1, 'Músicas', false, 0)`,
   ])
   return NextResponse.json({ roomId: id, masterToken })
 }

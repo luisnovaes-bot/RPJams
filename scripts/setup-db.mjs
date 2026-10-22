@@ -52,6 +52,11 @@ const statements = [
   // True when "Pause geral" paused this layer, so "Play geral" brings back only those.
   `ALTER TABLE layer_state ADD COLUMN IF NOT EXISTS resume_with_all boolean NOT NULL DEFAULT false`,
   `UPDATE layer_state SET label = CASE layer WHEN 1 THEN 'Música' ELSE 'Ambiente' END WHERE label = ''`,
+  // Rooms can have from 1 to 4 layers.
+  `ALTER TABLE lists DROP CONSTRAINT IF EXISTS lists_layer_check`,
+  `ALTER TABLE layer_state DROP CONSTRAINT IF EXISTS layer_state_layer_check`,
+  `ALTER TABLE lists ADD CONSTRAINT lists_layer_check CHECK (layer BETWEEN 1 AND 4) NOT VALID`,
+  `ALTER TABLE layer_state ADD CONSTRAINT layer_state_layer_check CHECK (layer BETWEEN 1 AND 4) NOT VALID`,
   `CREATE INDEX IF NOT EXISTS lists_room_idx ON lists(room_id)`,
   `CREATE INDEX IF NOT EXISTS tracks_list_idx ON tracks(list_id)`,
 ]

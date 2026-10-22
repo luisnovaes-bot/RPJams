@@ -19,7 +19,25 @@ export default function Home() {
 
   useEffect(() => {
     setOrigin(window.location.origin)
-    setSaved(load<Created[]>("rpjams:rooms", []))
+    const local = load<Created[]>("rpjams:rooms", [])
+    setSaved(local)
+    if (!local.length) return
+    // Drop rooms deleted elsewhere (e.g. in the admin panel) and pick up renames.
+    fetch("/api/rooms/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokens: local.map((r) => r.masterToken) }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { rooms: Created[] } | null) => {
+        if (!data) return
+        const alive = local
+          .map((room) => data.rooms.find((r) => r.masterToken === room.masterToken))
+          .filter((room): room is Created => !!room)
+        setSaved(alive)
+        save("rpjams:rooms", alive)
+      })
+      .catch(() => {})
   }, [])
 
   async function create() {

@@ -96,7 +96,7 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
           return (
             <div key={layer} className="row player-layer">
               <span style={{ flex: 1 }}>
-                Camada {index + 1} {state?.label && <span className="tag">{state.label}</span>}
+                <strong>{state.label || `Camada ${index + 1}`}</strong>
               </span>
               <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
             </div>

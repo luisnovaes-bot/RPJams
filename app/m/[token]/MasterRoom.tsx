@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CopyLink } from "@/components/CopyLink"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { clientId as getClientId } from "@/components/ids"
@@ -10,6 +10,7 @@ import { serverNow, startClockSync } from "@/lib/clock"
 import type { LayerPlayer } from "@/lib/layer-player"
 import { useLiveRows } from "@/lib/live"
 import { playlistVideoIds } from "@/lib/playlist"
+import { parsePlaylistId } from "@/lib/youtube"
 import { load, save } from "@/lib/storage"
 import { MAX_LAYERS, type LayerState, type List, type PresenceRow } from "@/lib/types"
 import { ListCard } from "./ListCard"
@@ -271,16 +272,18 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
       {error && <p className="error">{error}</p>}
       {notice && <p className="notice">{notice}</p>}
 
-      <div className="layers">
+      <LayerGrid items={LAYERS.length + (layerRows && LAYERS.length < MAX_LAYERS ? 1 : 0)}>
         {LAYERS.map((layer, index) => {
           const state = layerState(layer)
           const current = state?.track_id ? tracksById.get(state.track_id) : undefined
           const status = state?.youtube_id ? (state.paused ? "pausado" : engineStatus(layer)) : "silencio"
           const playing = isPlaying(layer)
+          const layerLists = lists.filter((list) => list.layer === layer)
+          const empty = !state?.youtube_id && layerLists.every((list) => list.tracks.length === 0)
           return (
             <section key={layer} className="card stack">
               <div className="layer-head">
-                <LayerTitle number={index + 1} label={state?.label ?? ""} onRename={(label) => call("setLayerLabel", { layer, label })} />
+                <LayerTitle label={state?.label || `Camada ${index + 1}`} onRename={(label) => call("setLayerLabel", { layer, label })} />
                 {LAYERS.length > 1 && (
                   <button
                     className="ghost"
@@ -292,10 +295,29 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                     🗑
                   </button>
                 )}
-                <button className={`round ${playing ? "" : "primary"}`} title={playing ? "Pausar esta camada" : "Tocar esta camada"} onClick={() => toggleLayer(layer)}>
-                  {playing ? "⏸" : "▶"}
-                </button>
+                {!empty && (
+                  <button className={`round ${playing ? "" : "primary"}`} title={playing ? "Pausar esta camada" : "Tocar esta camada"} onClick={() => toggleLayer(layer)}>
+                    {playing ? "⏸" : "▶"}
+                  </button>
+                )}
               </div>
+              {empty ? (
+                <EmptyLayer
+                  onAdd={async (url) => {
+                    // Use the layer's first list, creating one named after the layer if it has none.
+                    let listId: string | undefined = layerLists[0]?.id
+                    if (!listId) {
+                      const created = await call("createList", { layer, name: state?.label || "Lista" })
+                      listId = created ? created.lists?.find((l) => l.layer === layer)?.id : undefined
+                      if (!listId) return false
+                    }
+                    const playlistId = parsePlaylistId(url)
+                    const target = listId
+                    return playlistId ? importPlaylist(target, playlistId) : !!(await call("addTrack", { listId: target, url }))
+                  }}
+                />
+              ) : (
+              <>
               <div className="now">
                 <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
                 <strong>{current ? current.title : state?.youtube_id ? "Faixa removida" : "Nada tocando"}</strong>
@@ -336,32 +358,119 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                   />
                 ))}
               <NewList onCreate={async (name) => !!(await call("createList", { layer, name }))} />
+              </>
+              )}
             </section>
           )
         })}
-        {layerRows && LAYERS.length < MAX_LAYERS && <AddLayerCard first={LAYERS.length === 1} onAdd={() => call("addLayer")} />}
-      </div>
+        {layerRows && LAYERS.length < MAX_LAYERS && <AddLayerCard onAdd={async (label) => !!(await call("addLayer", { label }))} />}
+      </LayerGrid>
       <PlayerDock hostRef={hostRef} />
     </main>
   )
 }
 
-function AddLayerCard({ first, onAdd }: { first: boolean; onAdd: () => void }) {
+const CARD_MIN_WIDTH = 330
+
+/**
+ * Lays the layer cards out without leaving one alone on a row: everything in one row when
+ * it fits, otherwise two per row, and one per row on narrow screens.
+ */
+function LayerGrid({ items, children }: { items: number; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  const gap = 16
+  const fits = (cols: number) => cols * CARD_MIN_WIDTH + (cols - 1) * gap <= width
+  const columns = !width ? Math.min(items, 2) : fits(items) ? items : fits(2) ? 2 : 1
+  return (
+    <div ref={ref} className="layers" style={{ gridTemplateColumns: `repeat(${Math.max(columns, 1)}, minmax(0, 1fr))` }}>
+      {children}
+    </div>
+  )
+}
+
+function AddLayerCard({ onAdd }: { onAdd: (label: string) => Promise<boolean> }) {
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState("")
+  const submit = async () => {
+    if (!name.trim()) return
+    if (await onAdd(name.trim())) {
+      setName("")
+      setNaming(false)
+    }
+  }
   return (
     <section className="card add-layer">
       <h2>Nova camada</h2>
-      <button className="add-layer-button" onClick={onAdd} title="Criar nova camada">
-        +
-      </button>
+      {naming ? (
+        <div className="stack" style={{ width: "100%", maxWidth: 280 }}>
+          <input
+            type="text"
+            autoFocus
+            maxLength={30}
+            placeholder="Nome da camada (ex.: Ambiente)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit()
+              if (e.key === "Escape") setNaming(false)
+            }}
+          />
+          <div className="row" style={{ justifyContent: "center" }}>
+            <button className="primary" onClick={submit} disabled={!name.trim()}>
+              Criar camada
+            </button>
+            <button className="ghost" onClick={() => setNaming(false)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="add-layer-button" onClick={() => setNaming(true)} title="Criar nova camada">
+          +
+        </button>
+      )}
       <p className="small muted">
-        Uma camada toca ao mesmo tempo que as outras, com listas, volume e loop próprios.
-        {first ? " A segunda camada já vem pronta para ambientes: chuva, taverna, floresta, masmorra." : " Útil para separar ambientes, trilhas de personagens ou um segundo clima."}
+        Uma nova camada toca ao mesmo tempo que as outras, com listas, volume e loop próprios. Útil para separar ambientes, trilhas
+        de personagens ou um segundo clima.
       </p>
     </section>
   )
 }
 
-function LayerTitle({ number, label, onRename }: { number: number; label: string; onRename: (label: string) => void }) {
+function EmptyLayer({ onAdd }: { onAdd: (url: string) => Promise<boolean> }) {
+  const [url, setUrl] = useState("")
+  const [busy, setBusy] = useState(false)
+  const add = async () => {
+    if (!url.trim()) return
+    setBusy(true)
+    if (await onAdd(url.trim())) setUrl("")
+    setBusy(false)
+  }
+  return (
+    <div className="empty-layer stack">
+      <p className="small muted">
+        Cole o link de um vídeo ou de uma playlist do YouTube para começar. Uma playlist entra inteira, na ordem original. Os controles
+        aparecem assim que a primeira faixa entrar.
+      </p>
+      <div className="row">
+        <input type="url" placeholder="Colar link do YouTube" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+        <button className="primary" onClick={add} disabled={busy}>
+          {busy ? "…" : "Adicionar"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function LayerTitle({ label, onRename }: { label: string; onRename: (label: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(label)
   const finish = () => {
@@ -370,7 +479,6 @@ function LayerTitle({ number, label, onRename }: { number: number; label: string
   }
   return (
     <div className="row layer-title">
-      <h2>Camada {number}</h2>
       {editing ? (
         <input
           type="text"
@@ -386,7 +494,7 @@ function LayerTitle({ number, label, onRename }: { number: number; label: string
         />
       ) : (
         <>
-          <span className="tag">{label}</span>
+          <h2 className="layer-name">{label}</h2>
           <button
             className="ghost"
             title="Renomear camada"

@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       if (!layer || !name) return fail("Dê um nome para a lista")
       await sql`
         INSERT INTO lists (room_id, layer, name, loop_default, position)
-        VALUES (${roomId}, ${layer}, ${name}, ${layer !== 1},
+        VALUES (${roomId}, ${layer}, ${name}, false,
           (SELECT coalesce(max(position) + 1, 0) FROM lists WHERE room_id = ${roomId} AND layer = ${layer}))`
       break
     }
@@ -250,15 +250,15 @@ export async function POST(request: Request) {
     }
 
     case "addLayer": {
-      // Takes the first free number. Layers after the first usually hold ambience, so loop starts on.
+      // Takes the first free number; the master names it when creating.
       const used = (await sql`SELECT layer FROM layer_state WHERE room_id = ${roomId}`) as { layer: number }[]
       const free = Array.from({ length: MAX_LAYERS }, (_, i) => i + 1).find((n) => !used.some((u) => u.layer === n))
       if (!free) return fail(`O limite é de ${MAX_LAYERS} camadas por sala`)
-      const label = asText(body.label, 30) ?? (used.length === 1 ? "Ambiente" : "Nova camada")
-      const listName = label === "Ambiente" ? "Ambientes" : "Lista 1"
+      const label = asText(body.label, 30) ?? "Nova camada"
+      const listName = label
       await sql.transaction([
         sql`INSERT INTO layer_state (room_id, layer, label) VALUES (${roomId}, ${free}, ${label})`,
-        sql`INSERT INTO lists (room_id, layer, name, loop_default, position) VALUES (${roomId}, ${free}, ${listName}, true, 0)`,
+        sql`INSERT INTO lists (room_id, layer, name, loop_default, position) VALUES (${roomId}, ${free}, ${listName}, false, 0)`,
       ])
       break
     }

@@ -75,13 +75,7 @@ export function ListCard({ list, currentTrackId, playing, seekBar, call, onImpor
             {list.name}
           </h3>
         )}
-        <button
-          className={list.loop_default ? "on small" : "small"}
-          title="Ao tocar uma faixa desta lista, o loop da camada começa assim"
-          onClick={() => call("setListLoop", { listId: list.id, loop: !list.loop_default })}
-        >
-          Loop padrão {list.loop_default ? "sim" : "não"}
-        </button>
+
         <button
           className="ghost"
           title="Apagar lista"

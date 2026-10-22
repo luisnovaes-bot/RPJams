@@ -9,21 +9,20 @@ const RESUME_LEAD_MS = 400
 
 async function playTrack(roomId: string, trackId: string): Promise<boolean> {
   const rows = (await sql`
-    SELECT t.id::text, t.youtube_id, t.start_seconds, l.layer, l.loop_default
+    SELECT t.id::text, t.youtube_id, t.start_seconds, l.layer
     FROM tracks t JOIN lists l ON l.id = t.list_id
     WHERE t.id = ${trackId} AND t.room_id = ${roomId}`) as {
     id: string
     youtube_id: string
     start_seconds: number
     layer: number
-    loop_default: boolean
   }[]
   const track = rows[0]
   if (!track) return false
   await sql`
     UPDATE layer_state SET track_id = ${track.id}, youtube_id = ${track.youtube_id},
       start_seconds = ${track.start_seconds}, started_at_ms = ${Date.now() + START_LEAD_MS},
-      loop = ${track.loop_default}, paused = false, resume_with_all = false
+      paused = false, resume_with_all = false
     WHERE room_id = ${roomId} AND layer = ${track.layer}`
   return true
 }

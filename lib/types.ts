@@ -36,3 +36,14 @@ export type List = {
   position: number
   tracks: Track[]
 }
+
+export type AdminRoom = {
+  id: string
+  name: string
+  master_token: string
+  created_at: string
+  lists: number
+  tracks: number
+  layers: { layer: number; label: string; title: string | null; paused: boolean }[]
+  people: { nickname: string; audio_ok: boolean; is_master: boolean }[]
+}

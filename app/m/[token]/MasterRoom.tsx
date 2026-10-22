@@ -97,6 +97,18 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
     setJoined(true)
   }
 
+  // Coming straight from creating the room, the browser already allows sound, so skip the
+  // "Entrar como mestre" step. Opening the link later still shows it.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has("entrar")) return
+    url.searchParams.delete("entrar")
+    window.history.replaceState(null, "", url.pathname + url.search)
+    const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation
+    if (activation?.hasBeenActive) join()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function setMyVolume(layer: number, value: number) {
     const next = { ...myVolumes, [layer]: value }
     setMyVolumes(next)

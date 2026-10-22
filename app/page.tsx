@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { CopyLink } from "@/components/CopyLink"
 import { ThemeToggle } from "@/components/ThemeToggle"
@@ -8,6 +9,7 @@ import { load, save } from "@/lib/storage"
 type Created = { roomId: string; masterToken: string; name: string }
 
 export default function Home() {
+  const router = useRouter()
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -70,9 +72,11 @@ export default function Home() {
             <strong>Link para os jogadores</strong>
             <CopyLink url={`${origin}/s/${created.roomId}`} />
           </div>
-          <a href={`/m/${created.masterToken}`}>
-            <button className="primary">Abrir a sala como mestre</button>
-          </a>
+          {/* An in-app navigation keeps this click's permission to play sound, so the master
+              page can skip its "click to enable sound" step. */}
+          <button className="primary" onClick={() => router.push(`/m/${created.masterToken}?entrar=1`)}>
+            Abrir a sala como mestre
+          </button>
         </div>
       ) : (
         <div className="card stack">

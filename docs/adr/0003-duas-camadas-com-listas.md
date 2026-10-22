@@ -1,6 +1,6 @@
 # 0003 - Duas camadas, cada uma com suas listas
 
-**Status:** aceito (2026-10-21)
+**Status:** substituído em 2026-10-22: agora são de 1 a 4 camadas, cada uma com uma única fila de faixas, e o loop não tem padrão por lista.
 
 ## Contexto
 Em RPG costuma tocar uma música e uma ambientação ao mesmo tempo, e o mestre precisa trocar rápido sem pensar muito.

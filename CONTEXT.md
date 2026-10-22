@@ -4,31 +4,30 @@ App web para o grupo de RPG ouvir música e ambientação juntos, em sincronia, 
 
 ## Glossário
 
-- **Sala**: espaço permanente de um grupo. Guarda as listas entre sessões. Não tem login.
-- **Link de mestre**: link secreto da sala. Quem tem, controla tudo. Se vazar, qualquer um controla.
+- **Sala**: espaço permanente de um grupo. Guarda as camadas e faixas entre sessões. Não tem login.
+- **Link de mestre**: link secreto da sala. Quem tem, controla tudo. Se vazar, o admin pode gerar um novo (o antigo para de funcionar).
 - **Link de jogador**: link da sala que só permite ouvir e ajustar o próprio volume.
 - **Mestre**: quem controla o som. A tela de mestre também toca o som.
 - **Jogador**: quem ouve. Entra com um **apelido** e precisa clicar em "Entrar na sessão" (exigência do navegador para liberar áudio).
-- **Camada**: um canal de áudio independente. Existem 2 (Camada 1 e Camada 2). Cada uma tem um **nome de tipo** editável (padrão "Música" e "Ambiente"), toca no máximo uma faixa por vez e tem seu botão de play/pause, de **loop** e seu volume.
-- **Lista**: coleção de faixas que pertence a uma camada (ex.: "Batalhas" na Camada 1, "Ambientes" na Camada 2). Uma camada pode ter várias listas. Cada lista tem um **padrão de loop**.
-- **Faixa**: um link do YouTube colado numa lista, com nome (título do YouTube por padrão, renomeável) e ponto de início opcional (`t=` do link). O mesmo link pode estar em várias listas; cada ocorrência é uma faixa própria.
-- **Play geral / Pause geral**: botões no cabeçalho do mestre. O Pause geral pausa com fade o que estiver tocando; o Play geral retoma só as camadas que o Pause geral pausou. Se nada foi pausado assim, o Play geral põe para tocar as camadas paradas.
-- **Lista ativa**: a lista da última faixa tocada na camada (ou a primeira lista com faixas). É ela que o play da camada começa.
+- **Camada**: um canal de áudio independente, de 1 a 4 por sala. A sala nasce com uma ("Música"); o mestre cria outras dando um nome, que vira o título do card. Cada camada toca no máximo uma faixa por vez e tem play/pause, **loop** e volume próprios.
+- **Faixas**: a fila de vídeos do YouTube de uma camada, com nome (título do YouTube, renomeável) e ponto de início opcional (`t=` do link). Colar uma playlist acrescenta todos os vídeos na ordem dela. Por dentro cada camada guarda as faixas numa única lista do banco.
+- **Play geral / Pause geral**: botões no cabeçalho do mestre. O Pause geral pausa com fade o que estiver tocando; o Play geral retoma só as camadas que o Pause geral pausou. Se nada foi pausado assim, põe para tocar as camadas paradas que têm faixas.
+- **Admin**: painel em /admin, protegido por ADMIN_PASSWORD, que lista as salas, links, quem está conectado e o que toca, e permite renomear, gerar novo link de mestre e apagar sala.
 
 ## Comportamento
 
-- O mestre clica numa faixa de uma lista e ela toca na camada daquela lista. Quando a faixa acaba (sem loop), a próxima da mesma lista começa sozinha; no fim da lista, a camada fica em silêncio. (Mudou em 21/10: antes a camada ficava em silêncio após cada faixa.)
-- O botão de play/pause no topo da camada pausa e retoma (do mesmo ponto); se a camada está parada, toca a lista ativa desde a primeira faixa. Não existe mais botão de parar.
-- O avanço para a próxima faixa é pedido pela tela do mestre, então ela precisa estar aberta durante a sessão.
-- Trocar a faixa de uma camada faz fade de ~3 s: a antiga some em 1,5 s e a nova entra em 1,5 s (sem opção de corte seco por enquanto).
-- Ao tocar uma faixa, o loop da camada assume o padrão da lista; o mestre pode mudar na hora. Listas novas da Camada 2 nascem com loop ligado; da Camada 1, desligado.
-- O loop volta para o ponto de início da faixa.
-- Volume: o mestre define o volume de cada camada para todos; cada pessoa (inclusive o mestre) ajusta o próprio volume de cada camada por cima disso.
-- Jogadores não veem o nome da faixa, só se a camada está tocando.
+- Clicar numa faixa toca ela na camada. Quando a faixa acaba (sem loop), a próxima da fila começa sozinha; no fim, a camada fica em silêncio. O avanço é pedido pela tela do mestre, então ela precisa estar aberta durante a sessão.
+- O play/pause no topo da camada pausa e retoma do mesmo ponto; com a camada parada, toca a fila desde a primeira faixa.
+- Trocar de faixa faz fade (a antiga some em 1,5 s e a nova entra em 1,5 s).
+- O loop começa desligado em todas as camadas e só muda pelo botão da camada; trocar de faixa não mexe nele. O loop volta para o ponto de início da faixa.
+- A faixa atual tem barra de minutagem para pular para qualquer ponto (tocando ou pausada).
+- Volume: o mestre define o volume de cada camada para todos; cada jogador tem um único volume próprio, aplicado a todas as camadas.
+- Jogadores não veem o nome das faixas, só o nome da camada e se ela está tocando. O player do YouTube (200x200, regra do YouTube) ainda pode mostrar o título por alguns segundos.
+- Camada sem faixas mostra só o campo de colar link; ao esvaziar a fila, a camada para e volta a esse estado.
 - O mestre vê quem está conectado e se o áudio já foi liberado.
 - Sincronia aceitável: até 1–2 s de diferença. Quem entra atrasado cai no ponto atual.
 - O som continua tocando com a aba em segundo plano.
-- Mestre pode adicionar, remover, renomear e reordenar faixas. Mover lista de camada fica para depois.
+- Logo depois de criar a sala, o botão "Abrir a sala como mestre" entra direto no painel (o clique já liberou o som).
 
 ## Restrições
 
@@ -39,7 +38,7 @@ App web para o grupo de RPG ouvir música e ambientação juntos, em sincronia, 
 
 ## Versão 2 (fora do escopo agora)
 
-- **Cenas**: atalhos que trocam as duas camadas de uma vez (ex.: "Taverna").
+- **Cenas**: atalhos que trocam várias camadas de uma vez (ex.: "Taverna").
 - Corte seco na troca de faixa.
-- Mover lista entre camadas.
+- Login de mestre (Neon Auth) e painel de efeitos sonoros curtos com arquivos de áudio.
 - Efeitos sonoros pontuais.

@@ -125,5 +125,5 @@ button.add-layer-button:hover { border-color: var(--accent); color: var(--accent
 .layer-card { max-height: calc(100vh - var(--header-h, 140px) - 48px); }
 .layer-card.empty-card { min-height: 300px; }
 .layer-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-right: -6px; padding-right: 6px; }
-.now-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.now-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .loop-btn { flex: none; font-size: 13px; padding: 4px 10px; }

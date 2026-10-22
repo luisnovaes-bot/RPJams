@@ -347,16 +347,15 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
               ) : (
               <>
               <div className="now">
+                {/* Status and loop share the first row, so the track title gets the full width below. */}
                 <div className="now-top">
-                  <div className="stack" style={{ gap: 4, minWidth: 0 }}>
-                    <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
-                    <strong>{current ? current.title : state?.youtube_id ? "Faixa removida" : "Nada tocando"}</strong>
-                    {current && <span className="small muted">{current.listName}</span>}
-                  </div>
+                  <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
                   <button className={`loop-btn ${state?.loop ? "on" : ""}`} disabled={!state} onClick={() => state && toggleLoop(state)}>
                     Loop {state?.loop ? "ligado" : "desligado"}
                   </button>
                 </div>
+                <strong>{current ? current.title : state?.youtube_id ? "Faixa removida" : "Nada tocando"}</strong>
+                {current && <span className="small muted">{current.listName}</span>}
                 <label className="stack small" style={{ gap: 2 }}>
                   <span className="muted">Volume para todos: {state?.volume ?? 80}%</span>
                   <input

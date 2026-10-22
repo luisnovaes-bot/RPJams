@@ -103,6 +103,18 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
     save(`rpjams:volumes:${roomId}`, next)
   }
 
+  // Layer cards may grow only down to the bottom of the screen, below the sticky header.
+  const pageRef = useRef<HTMLElement>(null)
+  const headerRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const header = headerRef.current
+    const page = pageRef.current
+    if (!header || !page) return
+    const observer = new ResizeObserver(() => page.style.setProperty("--header-h", `${header.offsetHeight}px`))
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [joined])
+
   // Stable getters so the seek bars don't restart their timers on every render.
   const getPlayers = useMemo<Record<number, () => LayerPlayer | undefined>>(
     () => Object.fromEntries(LAYERS.map((l) => [l, () => playersRef.current[l]])),
@@ -232,8 +244,8 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
   const anyPlaying = LAYERS.some(isPlaying)
 
   return (
-    <main className="page">
-      <header className="card header">
+    <main className="page" ref={pageRef}>
+      <header className="card header" ref={headerRef}>
         <div className="header-top">
           <div className="stack" style={{ gap: 2 }}>
             <h1>{roomName}</h1>
@@ -281,7 +293,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
           const layerLists = lists.filter((list) => list.layer === layer)
           const empty = !state?.youtube_id && layerLists.every((list) => list.tracks.length === 0)
           return (
-            <section key={layer} className={`card stack ${empty ? "empty-card" : ""}`}>
+            <section key={layer} className={`card stack layer-card ${empty ? "empty-card" : ""}`}>
               <div className="layer-head">
                 <LayerTitle label={state?.label || `Camada ${index + 1}`} onRename={(label) => call("setLayerLabel", { layer, label })} />
                 {LAYERS.length > 1 && (
@@ -319,11 +331,13 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
               ) : (
               <>
               <div className="now">
-                <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
-                <strong>{current ? current.title : state?.youtube_id ? "Faixa removida" : "Nada tocando"}</strong>
-                {current && <span className="small muted">{current.listName}</span>}
-                <div className="row">
-                  <button className={state?.loop ? "on" : ""} disabled={!state} onClick={() => state && toggleLoop(state)}>
+                <div className="now-top">
+                  <div className="stack" style={{ gap: 4, minWidth: 0 }}>
+                    <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
+                    <strong>{current ? current.title : state?.youtube_id ? "Faixa removida" : "Nada tocando"}</strong>
+                    {current && <span className="small muted">{current.listName}</span>}
+                  </div>
+                  <button className={`loop-btn ${state?.loop ? "on" : ""}`} disabled={!state} onClick={() => state && toggleLoop(state)}>
                     Loop {state?.loop ? "ligado" : "desligado"}
                   </button>
                 </div>
@@ -344,6 +358,8 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                   <input type="range" min={0} max={100} value={myVolumes[layer] ?? 100} onChange={(e) => setMyVolume(layer, Number(e.target.value))} />
                 </label>
               </div>
+              {/* Long lists scroll inside the card instead of stretching it. */}
+              <div className="layer-scroll">
               {lists
                 .filter((list) => list.layer === layer)
                 .map((list) => (
@@ -358,6 +374,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                   />
                 ))}
               <NewList onCreate={async (name) => !!(await call("createList", { layer, name }))} />
+              </div>
               </>
               )}
             </section>

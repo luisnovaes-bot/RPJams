@@ -11,5 +11,5 @@ export function LogoMark({ corner = false }: { corner?: boolean }) {
 
 /** Large logo for the home page. */
 export function LogoHero() {
-  return <img src="/logo.png" alt="RPJams" className="logo-hero" width={760} height={380} />
+  return <img src="/logo.png" alt="RPJams" className="logo-hero" width={760} height={384} />
 }

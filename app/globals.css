@@ -120,3 +120,5 @@ button.add-layer-button:hover { border-color: var(--accent); color: var(--accent
 .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .empty-layer { background: var(--panel-2); border-radius: 8px; padding: 14px; margin: auto 0; }
 .empty-layer p { margin: 0; font-size: 15px; }
+/* An invisible twin of the title row at the bottom, so the link box sits in the middle of the whole card. */
+.empty-card::after { content: ""; flex: none; height: 32px; }

@@ -281,7 +281,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
           const layerLists = lists.filter((list) => list.layer === layer)
           const empty = !state?.youtube_id && layerLists.every((list) => list.tracks.length === 0)
           return (
-            <section key={layer} className="card stack">
+            <section key={layer} className={`card stack ${empty ? "empty-card" : ""}`}>
               <div className="layer-head">
                 <LayerTitle label={state?.label || `Camada ${index + 1}`} onRename={(label) => call("setLayerLabel", { layer, label })} />
                 {LAYERS.length > 1 && (

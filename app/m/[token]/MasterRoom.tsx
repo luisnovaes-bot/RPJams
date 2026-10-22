@@ -115,6 +115,22 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
     return () => observer.disconnect()
   }, [joined])
 
+  // When a layer moves to another track, scroll its list so that track is first in view;
+  // the ones already played stay above. The master can still scroll freely in between.
+  const scrolledTo = useRef<Record<number, string | null>>({})
+  useEffect(() => {
+    for (const state of layerRows ?? []) {
+      if (!state.track_id || scrolledTo.current[state.layer] === state.track_id) continue
+      const card = pageRef.current?.querySelector(`[data-layer="${state.layer}"]`)
+      const box = card?.querySelector<HTMLElement>(".layer-scroll")
+      const track = card?.querySelector<HTMLElement>(".track.current")
+      if (!box || !track) continue
+      scrolledTo.current[state.layer] = state.track_id
+      const top = track.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop
+      box.scrollTo({ top: Math.max(0, top - 4), behavior: "smooth" })
+    }
+  }, [layerRows, lists])
+
   // Stable getters so the seek bars don't restart their timers on every render.
   const getPlayers = useMemo<Record<number, () => LayerPlayer | undefined>>(
     () => Object.fromEntries(LAYERS.map((l) => [l, () => playersRef.current[l]])),
@@ -293,7 +309,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
           const layerLists = lists.filter((list) => list.layer === layer)
           const empty = !state?.youtube_id && layerLists.every((list) => list.tracks.length === 0)
           return (
-            <section key={layer} className={`card stack layer-card ${empty ? "empty-card" : ""}`}>
+            <section key={layer} data-layer={layer} className={`card stack layer-card ${empty ? "empty-card" : ""}`}>
               <div className="layer-head">
                 <LayerTitle label={state?.label || `Camada ${index + 1}`} onRename={(label) => call("setLayerLabel", { layer, label })} />
                 {LAYERS.length > 1 && (

@@ -143,6 +143,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ lists: await library(roomId), added: rows.length, skipped: ids.length - rows.length })
     }
 
+    case "clearTracks": {
+      const layer = asLayer(body.layer)
+      if (!layer) return fail("Pedido inválido")
+      await sql`DELETE FROM tracks WHERE room_id = ${roomId} AND list_id IN (SELECT id FROM lists WHERE room_id = ${roomId} AND layer = ${layer})`
+      break
+    }
+
     case "renameTrack": {
       const trackId = asId(body.trackId)
       const title = asText(body.title, 120)

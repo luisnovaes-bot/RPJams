@@ -13,7 +13,7 @@ import { playlistVideoIds } from "@/lib/playlist"
 import { parsePlaylistId } from "@/lib/youtube"
 import { load, save } from "@/lib/storage"
 import { MAX_LAYERS, type LayerState, type List, type PresenceRow } from "@/lib/types"
-import { ListCard } from "./ListCard"
+import { TrackPanel } from "./TrackPanel"
 import { SeekBar } from "./SeekBar"
 
 const STATUS_TEXT: Record<string, string> = {
@@ -355,7 +355,6 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                   </button>
                 </div>
                 <strong>{current ? current.title : state?.youtube_id ? "Faixa removida" : "Nada tocando"}</strong>
-                {current && <span className="small muted">{current.listName}</span>}
                 <label className="stack small" style={{ gap: 2 }}>
                   <span className="muted">Volume para todos: {state?.volume ?? 80}%</span>
                   <input
@@ -373,23 +372,18 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
                   <input type="range" min={0} max={100} value={myVolumes[layer] ?? 100} onChange={(e) => setMyVolume(layer, Number(e.target.value))} />
                 </label>
               </div>
-              {/* Long lists scroll inside the card instead of stretching it. */}
-              <div className="layer-scroll">
-              {lists
-                .filter((list) => list.layer === layer)
-                .map((list) => (
-                  <ListCard
-                    key={list.id}
-                    list={list}
-                    currentTrackId={state?.track_id ?? null}
-                    playing={playing}
-                    seekBar={<SeekBar getPlayer={getPlayers[layer]} onSeek={(position) => call("seek", { layer, position })} />}
-                    call={call}
-                    onImportPlaylist={importPlaylist}
-                  />
-                ))}
-              <NewList onCreate={async (name) => !!(await call("createList", { layer, name }))} />
-              </div>
+              {layerLists[0] && (
+                <TrackPanel
+                  layer={layer}
+                  listId={layerLists[0].id}
+                  tracks={layerLists.flatMap((list) => list.tracks)}
+                  currentTrackId={state?.track_id ?? null}
+                  playing={playing}
+                  seekBar={<SeekBar getPlayer={getPlayers[layer]} onSeek={(position) => call("seek", { layer, position })} />}
+                  call={call}
+                  onImportPlaylist={importPlaylist}
+                />
+              )}
               </>
               )}
             </section>
@@ -536,35 +530,6 @@ function LayerTitle({ label, onRename }: { label: string; onRename: (label: stri
           </button>
         </>
       )}
-    </div>
-  )
-}
-
-function NewList({ onCreate }: { onCreate: (name: string) => Promise<boolean> }) {
-  const [name, setName] = useState("")
-  const [open, setOpen] = useState(false)
-  if (!open) {
-    return (
-      <button className="ghost" onClick={() => setOpen(true)}>
-        + Nova lista
-      </button>
-    )
-  }
-  const submit = async () => {
-    if (name.trim() && (await onCreate(name))) {
-      setName("")
-      setOpen(false)
-    }
-  }
-  return (
-    <div className="row">
-      <input type="text" autoFocus placeholder="Nome da lista" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
-      <button className="primary" onClick={submit}>
-        Criar
-      </button>
-      <button className="ghost" onClick={() => setOpen(false)}>
-        Cancelar
-      </button>
     </div>
   )
 }

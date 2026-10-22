@@ -57,6 +57,19 @@ const statements = [
   `ALTER TABLE layer_state DROP CONSTRAINT IF EXISTS layer_state_layer_check`,
   `ALTER TABLE lists ADD CONSTRAINT lists_layer_check CHECK (layer BETWEEN 1 AND 4) NOT VALID`,
   `ALTER TABLE layer_state ADD CONSTRAINT layer_state_layer_check CHECK (layer BETWEEN 1 AND 4) NOT VALID`,
+  // Each layer now has a single track list: fold any extra lists into the first one, keeping order.
+  `UPDATE tracks t SET list_id = x.keep_id, position = x.rn - 1
+   FROM (
+     SELECT t2.id, k.keep_id,
+       row_number() OVER (PARTITION BY k.keep_id ORDER BY l2.position, l2.id, t2.position, t2.id) AS rn
+     FROM tracks t2
+     JOIN lists l2 ON l2.id = t2.list_id
+     JOIN (SELECT room_id, layer, min(id) AS keep_id FROM lists GROUP BY room_id, layer) k
+       ON k.room_id = l2.room_id AND k.layer = l2.layer
+   ) x
+   WHERE t.id = x.id`,
+  `DELETE FROM lists l USING (SELECT room_id, layer, min(id) AS keep_id FROM lists GROUP BY room_id, layer) k
+   WHERE l.room_id = k.room_id AND l.layer = k.layer AND l.id <> k.keep_id`,
   `CREATE INDEX IF NOT EXISTS lists_room_idx ON lists(room_id)`,
   `CREATE INDEX IF NOT EXISTS tracks_list_idx ON tracks(list_id)`,
 ]

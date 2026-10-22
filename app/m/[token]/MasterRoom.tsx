@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CopyLink } from "@/components/CopyLink"
+import { LogoMark } from "@/components/Logo"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { clientId as getClientId } from "@/components/ids"
 import { PlayerDock, useLayers } from "@/components/useLayers"
@@ -255,6 +256,7 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
   if (!joined) {
     return (
       <main className="center stack">
+        <LogoMark corner />
         <div className="corner">
           <ThemeToggle />
         </div>
@@ -275,9 +277,12 @@ export function MasterRoom({ token, roomId, roomName }: { token: string; roomId:
     <main className="page" ref={pageRef}>
       <header className="card header" ref={headerRef}>
         <div className="header-top">
+          <div className="row" style={{ gap: 14 }}>
+          <LogoMark />
           <div className="stack" style={{ gap: 2 }}>
             <h1>{roomName}</h1>
             <span className={`small ${connected ? "muted" : "error"}`}>{connected ? "Conectado" : "Conectando…"}</span>
+          </div>
           </div>
           <div className="row">
             <button className="primary big" onClick={playAll}>

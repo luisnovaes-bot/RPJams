@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { clientId as getClientId } from "@/components/ids"
+import { LogoMark } from "@/components/Logo"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { PlayerDock, useLayers } from "@/components/useLayers"
 import { usePresence } from "@/components/usePresence"
@@ -53,6 +54,7 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
   if (!joined) {
     return (
       <main className="center stack">
+        <LogoMark corner />
         <div className="corner">
           <ThemeToggle />
         </div>
@@ -77,7 +79,8 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
 
   return (
     <main className="center stack">
-      <div className="corner">
+      <LogoMark corner />
+        <div className="corner">
         <ThemeToggle />
       </div>
       <div className="topbar">

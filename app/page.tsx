@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { CopyLink } from "@/components/CopyLink"
+import { LogoHero } from "@/components/Logo"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { load, save } from "@/lib/storage"
 
@@ -68,7 +69,7 @@ export default function Home() {
       <div className="corner">
         <ThemeToggle />
       </div>
-      <h1>RPJams</h1>
+      <LogoHero />
       <p className="muted intro">
         O RPJams é a trilha sonora da sua mesa de RPG online. O mestre monta camadas de som com vídeos do YouTube e comanda tudo pelo
         painel de mestre. Os jogadores só precisam entrar no link para ouvir exatamente o mesmo som ao mesmo tempo.

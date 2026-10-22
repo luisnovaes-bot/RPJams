@@ -49,11 +49,23 @@ export default function Home() {
         <ThemeToggle />
       </div>
       <h1>RPJams</h1>
-      <p className="muted">Música e ambiente tocando juntos para toda a mesa. O mestre controla, os jogadores ouvem.</p>
+      <p className="muted">
+        O RPJams é a trilha sonora da sua mesa de RPG online. O mestre monta camadas de som com vídeos e playlists do YouTube, como uma
+        para a música e outra para a chuva ou a taverna, e comanda tudo pelo painel de mestre: o que toca, quando pausa, o volume e o
+        loop. Os jogadores abrem o painel de jogador, clicam para entrar e passam a ouvir exatamente o mesmo som, no mesmo momento,
+        cabendo a cada um só ajustar o próprio volume.
+      </p>
 
       {created ? (
         <div className="card stack">
           <h2>Sala “{created.name}” criada</h2>
+          <p className="muted">
+            Cada sala tem dois links. O link de mestre abre o painel de controle, onde você monta as camadas, escolhe as faixas e comanda
+            o som da mesa. Guarde-o como uma senha: quem tiver esse link controla a sala, e ele não pode ser recuperado. O link dos
+            jogadores é o que você manda para o grupo. Ele abre só o painel de ouvir, onde cada pessoa entra com um nome, ajusta o
+            próprio volume e acompanha o que você toca, sem ver o nome das faixas. A sala fica salva, então os mesmos links servem para
+            todas as sessões.
+          </p>
           <div className="stack">
             <strong>Seu link de mestre (guarde, ele não pode ser recuperado)</strong>
             <CopyLink url={`${origin}/m/${created.masterToken}`} />

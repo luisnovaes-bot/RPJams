@@ -131,3 +131,5 @@ button.add-layer-button:hover { border-color: var(--accent); color: var(--accent
 .layer-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin-right: -6px; padding-right: 6px; }
 .now-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .loop-btn { flex: none; font-size: 13px; padding: 4px 10px; }
+.center.home { max-width: 760px; }
+.intro { font-size: 17px; line-height: 1.55; margin: 0; }

@@ -63,7 +63,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .center { max-width: 520px; margin: 10vh auto; padding: 0 16px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
 .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.layers { display: grid; gap: 16px; align-items: start; }
+/* Cards in the same row share its height. */
+.layers { display: grid; gap: 16px; align-items: stretch; }
 .now { background: var(--panel-2); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .status { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .status.tocando { color: var(--ok); }
@@ -112,10 +113,10 @@ button.round { width: 44px; height: 44px; border-radius: 50%; padding: 0; font-s
 input[type=password] { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: 100%; }
 .player-layer { border-top: 1px solid var(--line); padding-top: 10px; }
 .add-layer { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; border-style: dashed; min-height: 260px; }
-.add-layer p { max-width: 260px; margin: 0; }
+.add-layer p { max-width: 300px; margin: 0; text-wrap: pretty; }
 button.add-layer-button { width: 120px; height: 120px; border-radius: 22px; font-size: 44px; line-height: 1; background: var(--panel-2); border: 2px solid var(--line); color: var(--text); }
 button.add-layer-button:hover { border-color: var(--accent); color: var(--accent); }
 .notice { color: var(--accent); font-size: 13px; }
 .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .empty-layer { background: var(--panel-2); border-radius: 8px; padding: 14px; }
-.empty-layer p { margin: 0; }
+.empty-layer p { margin: 0; font-size: 15px; }

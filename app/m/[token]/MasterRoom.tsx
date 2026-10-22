@@ -456,10 +456,7 @@ function EmptyLayer({ onAdd }: { onAdd: (url: string) => Promise<boolean> }) {
   }
   return (
     <div className="empty-layer stack">
-      <p className="small muted">
-        Cole o link de um vídeo ou de uma playlist do YouTube para começar. Uma playlist entra inteira, na ordem original. Os controles
-        aparecem assim que a primeira faixa entrar.
-      </p>
+      <p className="muted">Cole o link de um vídeo ou de uma playlist do YouTube para começar.</p>
       <div className="row">
         <input type="url" placeholder="Colar link do YouTube" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button className="primary" onClick={add} disabled={busy}>

@@ -24,16 +24,18 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
   const [nickname, setNickname] = useState("")
   const [joined, setJoined] = useState(false)
   const [clientId, setClientId] = useState("")
-  const [volumes, setVolumes] = useState<Record<number, number>>({ 1: 100, 2: 100 })
+  const [volume, setVolumeState] = useState(100)
 
   useEffect(() => {
     setNickname(load("rpjams:nickname", ""))
-    setVolumes(load(`rpjams:volumes:${roomId}`, { 1: 100, 2: 100 }))
+    setVolumeState(load(`rpjams:volume:${roomId}`, 100))
     setClientId(getClientId())
   }, [roomId])
 
   const request = useMemo(() => (joined ? { roomId } : null), [joined, roomId])
   const { rows, connected } = useLiveRows<LayerState>(request)
+  // One volume for this person, applied to both layers on top of the master's mix.
+  const volumes = useMemo(() => ({ 1: volume, 2: volume }), [volume])
   const { hostRef, statuses } = useLayers(joined, rows, volumes)
   usePresence(clientId ? { roomId } : null, clientId, nickname || "Sem nome", joined)
 
@@ -43,10 +45,9 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
     setJoined(true)
   }
 
-  function setVolume(layer: number, value: number) {
-    const next = { ...volumes, [layer]: value }
-    setVolumes(next)
-    save(`rpjams:volumes:${roomId}`, next)
+  function setVolume(value: number) {
+    setVolumeState(value)
+    save(`rpjams:volume:${roomId}`, value)
   }
 
   if (!joined) {
@@ -84,24 +85,24 @@ export function PlayerRoom({ roomId, roomName }: { roomId: string; roomName: str
         <span className={`pill ${connected ? "ok" : "warn"}`}>{connected ? "Conectado" : "Conectando…"}</span>
       </div>
       <p className="muted small">Pode trocar de aba ou minimizar: o som continua. Só não feche esta aba.</p>
-      {LAYERS.map((layer) => {
-        const state = rows?.find((r) => r.layer === layer)
-        const status = state?.youtube_id ? (state.paused ? "pausado" : statuses[layer]) : "silencio"
-        return (
-          <div key={layer} className="card stack">
-            <div className="row">
-              <h2 style={{ flex: 1 }}>
+      <div className="card stack">
+        <label className="stack small">
+          <span className="muted">Seu volume: {volume}%</span>
+          <input type="range" min={0} max={100} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
+        </label>
+        {LAYERS.map((layer) => {
+          const state = rows?.find((r) => r.layer === layer)
+          const status = state?.youtube_id ? (state.paused ? "pausado" : statuses[layer]) : "silencio"
+          return (
+            <div key={layer} className="row player-layer">
+              <span style={{ flex: 1 }}>
                 Camada {layer} {state?.label && <span className="tag">{state.label}</span>}
-              </h2>
+              </span>
               <span className={`status ${status}`}>{STATUS_TEXT[status]}</span>
             </div>
-            <label className="stack small">
-              <span className="muted">Seu volume: {volumes[layer]}%</span>
-              <input type="range" min={0} max={100} value={volumes[layer]} onChange={(e) => setVolume(layer, Number(e.target.value))} />
-            </label>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
       <PlayerDock hostRef={hostRef} />
     </main>
   )
